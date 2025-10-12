@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
         MPI_Request self_req;
         MPI_Isend(results, 2, MPI_INT, 0, 200, MPI_COMM_WORLD, &self_req);
 
-        // Espera todos terminarem
+        // MPI_Waitall eh o equivalente a for (...) {MPI_Wait}
         MPI_Waitall(nprocs, reqs, MPI_STATUSES_IGNORE);
 
         // Consolida resultados
