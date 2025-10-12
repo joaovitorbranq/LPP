@@ -27,6 +27,7 @@ enum Tags {
 
 int main(int argc, char *argv[]) {
     int rank, nprocs;
+    MPI_Status state;
 
     MPI_Init(&argc, &argv);                      // inicia o MPI
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);        // id do processo
@@ -86,8 +87,8 @@ int main(int argc, char *argv[]) {
         int my_role = ROLE_NONE;
         int n_local = 0;
 
-        MPI_Recv(&my_role, 1, MPI_INT, 0, TAG_ROLE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Recv(&n_local, 1, MPI_INT, 0, TAG_N, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(&my_role, 1, MPI_INT, 0, TAG_ROLE, MPI_COMM_WORLD, &state);
+        MPI_Recv(&n_local, 1, MPI_INT, 0, TAG_N, MPI_COMM_WORLD, &state);
 
 
         int *buffer = (int*)malloc((size_t)n_local * sizeof(int));
@@ -96,7 +97,7 @@ int main(int argc, char *argv[]) {
             MPI_Abort(MPI_COMM_WORLD, 3);
         }
 
-        MPI_Recv(buffer, n_local, MPI_INT, 0, TAG_VET, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(buffer, n_local, MPI_INT, 0, TAG_VET, MPI_COMM_WORLD, &state);
 
         long long result = 0;
         if (my_role == ROLE_SUM) {
