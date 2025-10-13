@@ -3,11 +3,10 @@
 #include <mpi.h>
 
 /*
-  Versão (a) com 4 processos, sem MPI_Bcast e sem MPI_Get.
   Primitivas usadas: MPI_Init, MPI_Finalize, MPI_Comm_rank, MPI_Comm_size,
                      MPI_Send, MPI_Recv, MPI_Wtime.
 
-  rank 0 (coordenador) -> envia a função, N e o vetor para ranks 1,2,3
+  rank 0 (mestre) -> envia a função, N e o vetor para ranks 1,2,3
   ranks 1,2,3 -> calculam (soma, subtração, multiplicação) e devolvem resultado
 */
 
@@ -18,41 +17,43 @@ enum Role {
     ROLE_MUL  = 3
 };
 
+// tags para send / recv
 enum Tags {
-    TAG_ROLE   = 100,  // função atribuída
+    TAG_ROLE   = 100,  // função atribuida
     TAG_N      = 101,  // tamanho do vetor
     TAG_VET    = 102,  // dados do vetor
-    TAG_RESULT = 200   // resultado de volta ao coordenador
+    TAG_RESULT = 200   // resultado de volta ao mestre
 };
 
 int main(int argc, char *argv[]) {
     int rank, nprocs;
-    MPI_Status state;
+    MPI_Status state;                            // status de retorno para o MPI_Recv
 
     MPI_Init(&argc, &argv);                      // inicia o MPI
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);        // id do processo
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);      // total de processos
 
     const int TAM = 10;
-    int N = 10;                 // como no enunciado
+    int N = 10;                
     int vet[TAM];
 
     long long res_sum = 0, res_sub = 0, res_mul = 0;
     double t0 = 0.0, t1 = 0.0;
 
-    if (rank == 0) {
-        // Inicializa o vetor
+    if (rank == 0) { // mestre
+
+        // inicializa o vetor
         for (int i = 0; i < N; i++) 
             vet[i] = i + 1;
 
-        // Exibe o vetor
+        // printa
         for (int i = 0; i < N; i++) {
             printf("vet[%d] = %d\n", i, vet[i]);
         }
 
         t0 = MPI_Wtime(); // início da medição
 
-        // Atribui papéis e envia dados a cada trabalhador
+        // atribui roles e envia para cada slave
         int roles[3]   = { ROLE_SUM, ROLE_SUB, ROLE_MUL };
         int dest[3] = { 1, 2, 3 };
 
@@ -66,7 +67,7 @@ int main(int argc, char *argv[]) {
             MPI_Send(vet, N, MPI_INT, dest[i], TAG_VET, MPI_COMM_WORLD);
         }
 
-        // Recebe 3 resultados (um de cada trabalhador)
+        // recebe os resultados de cada slave (3)
         for (int i = 0; i < 3; i++) {
             long long tmp = 0;
             MPI_Status st;
@@ -76,14 +77,13 @@ int main(int argc, char *argv[]) {
             else if (st.MPI_SOURCE == 3) res_mul = tmp;
         }
 
-        t1 = MPI_Wtime(); // fim da medição
+        t1 = MPI_Wtime();
 
         printf("Soma = %lld\n", res_sum);
         printf("Subtracao = %lld\n", res_sub);
         printf("Multiplicacao = %lld\n", res_mul);
         printf("Tempo (segundos): %.6f\n", t1 - t0);
-    } else {
-        // Trabalhadores: recebem papel, N e vetor
+    } else { // slaves
         int my_role = ROLE_NONE;
         int n_local = 0;
 
